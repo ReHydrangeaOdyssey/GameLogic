@@ -3,8 +3,12 @@
 #![forbid(unsafe_code)]
 
 pub mod enums;
+pub mod formation;
 pub mod model;
+pub mod party_rank;
 pub mod pseudorandom;
+pub mod skill;
+pub mod status_abnormality;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Error {
