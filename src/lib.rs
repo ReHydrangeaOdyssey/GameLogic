@@ -2,13 +2,17 @@
 //! Callers supply validated master data, initial state, time and random state.
 #![forbid(unsafe_code)]
 
+pub mod ability;
 pub mod enums;
+pub mod follower;
 pub mod formation;
+pub mod master_data;
 pub mod model;
 pub mod party_rank;
 pub mod pseudorandom;
 pub mod skill;
 pub mod status_abnormality;
+pub mod tactics;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Error {
