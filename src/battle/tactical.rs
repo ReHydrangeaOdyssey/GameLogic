@@ -41,7 +41,8 @@ impl Battle<'_> {
         matches!(
             trigger,
             TacticsBattleSpecialTrigger::None | TacticsBattleSpecialTrigger::Battle
-        ) || (trigger == TacticsBattleSpecialTrigger::Interception && self.combatants[i].side == 1)
+        ) || (trigger == TacticsBattleSpecialTrigger::Interception
+            && self.combatants[i].side == super::DEFENDING_SIDE)
     }
 
     pub(super) fn tactics_correction(&self, i: usize, stat: Stat) -> f32 {

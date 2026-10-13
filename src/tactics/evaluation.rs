@@ -1,3 +1,8 @@
+const BASE_SELECTION_WEIGHT: i64 = 100;
+const MIN_SELECTION_WEIGHT: i64 = 1;
+const MAX_SELECTION_WEIGHT: i64 = 1_000_000;
+const INFINITE_SELECTION_CORRECTION: f32 = 99_999.0;
+
 use super::{Binding, Parameter, Series, applies, integrate, is_active};
 use crate::model::*;
 
@@ -124,16 +129,17 @@ pub fn selection_weight(effects: &[TacticsActiveEffectState], context: EffectCon
         *sums.entry(series).or_insert(0.0_f32) += value;
     }
     // Weight = clamp(100 + trunc(100 * sum(series sums)), 1, 1,000,000).
-    let correction = 100.0 * sums.values().copied().sum::<f32>();
+    let correction = BASE_SELECTION_WEIGHT as f32 * sums.values().copied().sum::<f32>();
     let correction = if correction.is_nan() {
         0.0
     } else if correction.is_infinite() {
-        99_999.0
+        INFINITE_SELECTION_CORRECTION
     } else {
         correction
     };
     // Widen the addition so a saturated i32 conversion cannot overflow.
-    (100_i64 + i64::from(correction as i32)).clamp(1, 1_000_000) as u32
+    (BASE_SELECTION_WEIGHT + i64::from(correction as i32))
+        .clamp(MIN_SELECTION_WEIGHT, MAX_SELECTION_WEIGHT) as u32
 }
 
 /// Fixed resource recovery at successful sortie completion, before consuming COUNT effects.

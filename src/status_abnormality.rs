@@ -1,3 +1,11 @@
+pub(crate) const FIRST_ELAPSED_TURN: u32 = 1;
+pub(crate) const POISON_INTERVAL_TURNS: u32 = 3;
+const POISON_HP_RATE: f32 = 0.05;
+const COMA_MINIMUM_TURNS: u32 = 3;
+const OTHER_STATUS_MINIMUM_TURNS: u32 = 5;
+const STATUS_RELEASE_RATE: f32 = 0.5;
+pub(crate) const BLINDNESS_HIT_RATE: f32 = 0.5;
+
 use crate::{model::*, pseudorandom::Random};
 
 pub fn contains(character: &CharacterBattle, status: StatusAbnormalityID) -> bool {
@@ -13,11 +21,11 @@ pub fn apply(character: &mut CharacterBattle, status: StatusAbnormalityID) {
         .iter_mut()
         .find(|s| s.status_id == status)
     {
-        state.elapsed_turns = 1;
+        state.elapsed_turns = FIRST_ELAPSED_TURN;
     } else {
         character.status_abnormalities.push(StatusAbnormalityState {
             status_id: status,
-            elapsed_turns: 1,
+            elapsed_turns: FIRST_ELAPSED_TURN,
             poison_cycle_turns: 0,
         });
         character.status_abnormalities.sort_by_key(|s| s.status_id);
@@ -32,19 +40,20 @@ pub fn end_turn(character: &mut CharacterBattle, random: &mut Random) -> bool {
     character.status_abnormalities.retain_mut(|state| {
         if state.status_id == StatusAbnormalityID::Poison {
             state.poison_cycle_turns += 1;
-            if state.poison_cycle_turns == 3 {
+            if state.poison_cycle_turns == POISON_INTERVAL_TURNS {
                 // Poison every third turn: HP' = max(HP - ceil(HP * 0.05), 0).
-                character.hp.current_hp =
-                    (character.hp.current_hp - (character.hp.current_hp * 0.05).ceil()).max(0.0);
+                character.hp.current_hp = (character.hp.current_hp
+                    - (character.hp.current_hp * POISON_HP_RATE).ceil())
+                .max(0.0);
                 state.poison_cycle_turns = 0;
             }
         } else {
             let minimum = if state.status_id == StatusAbnormalityID::Coma {
-                3
+                COMA_MINIMUM_TURNS
             } else {
-                5
+                OTHER_STATUS_MINIMUM_TURNS
             };
-            if state.elapsed_turns >= minimum && random.probability(0.5) {
+            if state.elapsed_turns >= minimum && random.probability(STATUS_RELEASE_RATE) {
                 woke |= state.status_id == StatusAbnormalityID::Coma;
                 return false;
             }

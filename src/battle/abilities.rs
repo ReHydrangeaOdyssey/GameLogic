@@ -1,3 +1,6 @@
+const SURVIVAL_HP: f32 = 1.0;
+const PERCENT_SCALE: f32 = 100.0;
+
 use super::{Battle, Event};
 use crate::{ability, model::*, pseudorandom::shuffle, status_abnormality};
 
@@ -195,7 +198,7 @@ impl Battle<'_> {
                 .is_some();
         self.combatants[target].character.hp.damage(damage);
         if survives {
-            self.combatants[target].character.hp.current_hp = 1.0;
+            self.combatants[target].character.hp.current_hp = SURVIVAL_HP;
         }
         self.events.push(Event::Damage {
             actor,
@@ -219,6 +222,6 @@ impl Battle<'_> {
     pub(super) fn hp_threshold(&self, i: usize, percent: u32) -> bool {
         let hp = &self.combatants[i].character.hp;
         // Threshold compares current HP with max HP * (integer percent / 100).
-        hp.current_hp <= hp.max_hp * (percent as f32 / 100.0)
+        hp.current_hp <= hp.max_hp * (percent as f32 / PERCENT_SCALE)
     }
 }

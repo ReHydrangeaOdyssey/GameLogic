@@ -1,3 +1,10 @@
+pub(crate) const FIRST_POSITION: u8 = 1;
+pub(crate) const LAST_POSITION: u8 = GRID_SIZE * GRID_SIZE;
+pub(crate) const LAST_GRID_INDEX: u8 = GRID_SIZE - 1;
+pub(crate) const CENTER_GRID_INDEX: u8 = GRID_SIZE / 2;
+const STRIKE_AREA_SIZE: u8 = 2;
+const LAST_STRIKE_ORIGIN: u8 = GRID_SIZE - STRIKE_AREA_SIZE;
+
 use crate::{
     Error,
     model::*,
@@ -12,7 +19,7 @@ pub struct Position(u8);
 
 impl Position {
     pub fn new(value: u8) -> Result<Self, Error> {
-        if (1..=9).contains(&value) {
+        if (FIRST_POSITION..=LAST_POSITION).contains(&value) {
             Ok(Self(value))
         } else {
             Err(Error::InvalidFormation)
@@ -23,11 +30,11 @@ impl Position {
     }
     /// Zero at the front, two at the rear.
     pub fn row(self) -> u8 {
-        (self.0 - 1) / GRID_SIZE
+        (self.0 - FIRST_POSITION) / GRID_SIZE
     }
     /// Zero at the left, two at the right in the formation diagram.
     pub fn column(self) -> u8 {
-        2 - (self.0 - 1) % GRID_SIZE
+        LAST_GRID_INDEX - (self.0 - FIRST_POSITION) % GRID_SIZE
     }
 }
 
@@ -102,7 +109,7 @@ pub fn priority_placement(
         displaced.extend(group.into_iter().skip(1).map(|p| p.0));
     }
     for id in displaced {
-        let position = (1..=9)
+        let position = (FIRST_POSITION..=LAST_POSITION)
             .map(Position)
             .find(|p| !placed.iter().any(|v| v.1 == *p))
             .ok_or(Error::InvalidFormation)?;
@@ -132,7 +139,7 @@ pub fn normal_targets(
     // Opposing formations face each other: own position 1 shares a lane with enemy position 3.
     let origin_column = origin
         .map(Position::column)
-        .unwrap_or(2 - attacker.column());
+        .unwrap_or(LAST_GRID_INDEX - attacker.column());
     match attribute {
         CharacterAttribute::Slash | CharacterAttribute::Ranged => {
             let row = origin.map(Position::row).unwrap_or_else(|| {
@@ -154,29 +161,34 @@ pub fn normal_targets(
             let row = origin
                 .map(Position::row)
                 .unwrap_or_else(|| positions.iter().map(|p| p.row()).min().unwrap())
-                .min(1);
-            let col = (0..2)
-                .filter(|&col| origin.is_none_or(|p| col <= p.column() && p.column() < col + 2))
+                .min(LAST_STRIKE_ORIGIN);
+            let col = (0..=LAST_STRIKE_ORIGIN)
+                .filter(|&col| {
+                    origin.is_none_or(|p| col <= p.column() && p.column() < col + STRIKE_AREA_SIZE)
+                })
                 .max_by_key(|&col| {
                     let hits = positions
                         .iter()
                         .filter(|p| {
                             p.row() >= row
-                                && p.row() < row + 2
+                                && p.row() < row + STRIKE_AREA_SIZE
                                 && p.column() >= col
-                                && p.column() < col + 2
+                                && p.column() < col + STRIKE_AREA_SIZE
                         })
                         .count();
                     (
                         hits,
-                        col <= origin_column && origin_column < col + 2,
+                        col <= origin_column && origin_column < col + STRIKE_AREA_SIZE,
                         std::cmp::Reverse(col),
                     )
                 })
                 .unwrap();
             candidates.retain(|&i| {
                 let p = positions[i];
-                p.row() >= row && p.row() < row + 2 && p.column() >= col && p.column() < col + 2
+                p.row() >= row
+                    && p.row() < row + STRIKE_AREA_SIZE
+                    && p.column() >= col
+                    && p.column() < col + STRIKE_AREA_SIZE
             });
         }
     }

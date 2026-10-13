@@ -1,3 +1,11 @@
+pub const ABILITY_SLOT_COUNT: usize = 2;
+const MAX_HP_THRESHOLD_PERCENT: u32 = 100;
+const MIN_HP_THRESHOLD_PERCENT: u32 = 1;
+const REQUIRED_DAMAGE_MULTIPLIER: f32 = 2.0;
+const CASTLE_BREAK_EFFECT_COUNT: usize = 2;
+const CASTLE_BREAK_ATTACK_INDEX: usize = 0;
+const CASTLE_BREAK_DAMAGE_INDEX: usize = 1;
+
 mod allowed;
 use crate::{Error, model::*, pseudorandom::Random};
 
@@ -64,14 +72,14 @@ pub fn validate(ability: &AbilityMasterData) -> Result<(), Error> {
         AbilityConditionID::HpAtOrBelowThreshold
             | AbilityConditionID::AllyHpAtOrBelowThresholdAttacked
             | AbilityConditionID::TargetHpAtOrBelowThresholdNormalAttack
-    ) && !(1..=100).contains(&c.condition_value)
+    ) && !(MIN_HP_THRESHOLD_PERCENT..=MAX_HP_THRESHOLD_PERCENT).contains(&c.condition_value)
     {
         return Err(Error::InvalidValue("ability HP threshold"));
     }
     if (ability.effect_id == E::CastleBreakDamageIncrease
         || (ability.effect_id == E::DamageIncrease
             && c.condition_id == AbilityConditionID::SingleTargetNormalAttack))
-        && correction(ability) != 2.0
+        && correction(ability) != REQUIRED_DAMAGE_MULTIPLIER
     {
         return Err(Error::InvalidValue("ability damage multiplier"));
     }
@@ -79,7 +87,7 @@ pub fn validate(ability: &AbilityMasterData) -> Result<(), Error> {
 }
 
 fn valid_entries(entries: &[AbilityIncapacitatedAllyCountStatCorrectionEntry]) -> bool {
-    if entries.len() != 5 {
+    if entries.len() != crate::formation::MAX_PARTY_SIZE {
         return false;
     }
     let mut entries: Vec<_> = entries.iter().collect();
@@ -100,7 +108,7 @@ pub fn validate_equipment(
     character: &CharacterMasterData,
     abilities: &[&AbilityMasterData],
 ) -> Result<(), Error> {
-    if abilities.len() > 2 {
+    if abilities.len() > ABILITY_SLOT_COUNT {
         return Err(Error::InvalidEquipment);
     }
     for (i, a) in abilities.iter().enumerate() {
@@ -145,15 +153,15 @@ pub fn castle_break(
     random: &mut Random,
 ) -> Result<CastleBreakCorrection, Error> {
     let mut result = CastleBreakCorrection::default();
-    let mut checked = [false; 2];
+    let mut checked = [false; CASTLE_BREAK_EFFECT_COUNT];
     for a in abilities {
         validate(a)?;
         if a.activation_condition.condition_id != AbilityConditionID::CastleBreak {
             continue;
         }
         let index = match a.effect_id {
-            AbilityEffectID::Buff => 0,
-            AbilityEffectID::CastleBreakDamageIncrease => 1,
+            AbilityEffectID::Buff => CASTLE_BREAK_ATTACK_INDEX,
+            AbilityEffectID::CastleBreakDamageIncrease => CASTLE_BREAK_DAMAGE_INDEX,
             _ => continue,
         };
         if checked[index] {
@@ -166,7 +174,7 @@ pub fn castle_break(
         if let Some(AbilityMasterDataEffectData::StatCorrection(v)) = &a.effect_data {
             result.attack = v.attack;
         }
-        if index == 1 {
+        if index == CASTLE_BREAK_DAMAGE_INDEX {
             // The CB formula expects a correction, so convert multiplier m to m - 1.
             result.damage = correction(a) - 1.0;
         }

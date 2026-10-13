@@ -1,3 +1,6 @@
+pub(crate) const MAX_CHARACTER_BP: u16 = 99;
+const MAX_CHARACTER_TACTICS: usize = 2;
+
 use crate::{Error, model::*};
 use std::collections::BTreeMap;
 
@@ -47,8 +50,8 @@ impl MasterData {
         }
         for character in data.characters {
             if character.skill_ids.is_empty()
-                || character.tactics_ids.len() > 2
-                || character.bp > 99
+                || character.tactics_ids.len() > MAX_CHARACTER_TACTICS
+                || character.bp > MAX_CHARACTER_BP
             {
                 return Err(Error::InvalidValue("character master"));
             }

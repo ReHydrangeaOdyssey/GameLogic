@@ -285,7 +285,9 @@ impl Battle<'_> {
         let blind_miss = status_abnormality::contains(
             &self.combatants[actor].character,
             StatusAbnormalityID::Blindness,
-        ) && !self.random.probability(0.5);
+        ) && !self
+            .random
+            .probability(status_abnormality::BLINDNESS_HIT_RATE);
         if blind_miss {
             if context.cover.is_none() {
                 self.counter(actor, target);

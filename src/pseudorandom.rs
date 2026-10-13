@@ -1,3 +1,8 @@
+const XORSHIFT_INPUT_SHIFT: u32 = 18;
+const XORSHIFT_OUTPUT_SHIFT: u32 = 27;
+const ROTATION_SHIFT: u32 = 59;
+const DAMAGE_MULTIPLIER_STEP: f32 = 0.0001;
+
 use crate::Error;
 
 const MULTIPLIER: u64 = 6_364_136_223_846_793_005;
@@ -31,8 +36,9 @@ impl Random {
         let old_state = self.state;
         // PCG: state' = state * multiplier + increment modulo 2^64.
         self.state = old_state.wrapping_mul(MULTIPLIER).wrapping_add(INCREMENT);
-        let xorshifted = (((old_state >> 18) ^ old_state) >> 27) as u32;
-        let rotation = (old_state >> 59) as u32;
+        let xorshifted =
+            (((old_state >> XORSHIFT_INPUT_SHIFT) ^ old_state) >> XORSHIFT_OUTPUT_SHIFT) as u32;
+        let rotation = (old_state >> ROTATION_SHIFT) as u32;
         xorshifted.rotate_right(rotation)
     }
 
@@ -57,7 +63,7 @@ impl Random {
 
     pub fn damage_multiplier(&mut self) -> f32 {
         // Inclusive 1.0000 .. 1.0300 in steps of 0.0001.
-        1.0 + self.next_bounded(DAMAGE_STEPS) as f32 * 0.0001
+        1.0 + self.next_bounded(DAMAGE_STEPS) as f32 * DAMAGE_MULTIPLIER_STEP
     }
 }
 

@@ -1,9 +1,13 @@
+pub const FOLLOWER_SLOT_COUNT: usize = 2;
+const LOWER_RARITY_SLOT: usize = 1;
+const FOLLOWER_STAT_RATE: f32 = 0.1;
+
 use crate::{Error, model::*};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Loadout {
     pub character_id: u32,
-    pub followers: [Option<u32>; 2],
+    pub followers: [Option<u32>; FOLLOWER_SLOT_COUNT],
     pub main_skill_id: u32,
     pub ability_ids: Vec<u32>,
 }
@@ -68,13 +72,13 @@ pub fn prepare_character(
 
 pub fn party_status(
     body: &CharacterMasterData,
-    followers: [Option<&CharacterMasterData>; 2],
+    followers: [Option<&CharacterMasterData>; FOLLOWER_SLOT_COUNT],
 ) -> Result<PartyCharacterStatus, Error> {
     for (slot, follower) in followers.iter().enumerate() {
         if let Some(follower) = follower
             && (follower.id == body.id
                 || follower.rarity > body.rarity
-                || (slot == 1 && follower.rarity == body.rarity))
+                || (slot == LOWER_RARITY_SLOT && follower.rarity == body.rarity))
         {
             return Err(Error::InvalidFollower);
         }
@@ -93,16 +97,16 @@ pub fn party_status(
     };
     // Final stat = body + follower slot 0 * 0.1 + follower slot 1 * 0.1.
     for follower in followers.into_iter().flatten() {
-        status.max_hp += follower.hp as f32 * 0.1;
-        status.attack += follower.attack as f32 * 0.1;
-        status.defense += follower.defense as f32 * 0.1;
+        status.max_hp += follower.hp as f32 * FOLLOWER_STAT_RATE;
+        status.attack += follower.attack as f32 * FOLLOWER_STAT_RATE;
+        status.defense += follower.defense as f32 * FOLLOWER_STAT_RATE;
     }
     Ok(status)
 }
 
 pub fn validate_main_skill(
     body: &CharacterMasterData,
-    followers: [Option<&CharacterMasterData>; 2],
+    followers: [Option<&CharacterMasterData>; FOLLOWER_SLOT_COUNT],
     skill_id: u32,
 ) -> Result<(), Error> {
     party_status(body, followers)?;

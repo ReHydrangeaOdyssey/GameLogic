@@ -1,3 +1,8 @@
+const MAX_TACTICS_STAGE: u32 = 5;
+const MAX_TACTICS_USES: u32 = 5;
+const BASE_TACTICS_STAGE: u32 = 1;
+const MICROSECONDS_PER_SECOND: u64 = 1_000_000;
+
 mod evaluation;
 mod parameter;
 mod parameters;
@@ -131,7 +136,7 @@ pub fn stage_effects(
     if owned_count == 0 {
         return Err(Error::TacticsUnavailable);
     }
-    let steps = owned_count.min(5) - 1;
+    let steps = owned_count.min(MAX_TACTICS_STAGE) - BASE_TACTICS_STAGE;
     let mut effects = master.effects.clone();
     for stage in &master.stage_effects {
         increase(&mut effects[stage.effect_index as usize], stage, steps)?;
@@ -145,7 +150,7 @@ pub fn stage_effects(
 
 pub fn initial_state(master: &TacticsMasterData, owned_count: u32) -> TacticsBattleState {
     TacticsBattleState {
-        available_uses: owned_count.min(5),
+        available_uses: owned_count.min(MAX_TACTICS_USES),
         tp_cost: master.tp_cost,
     }
 }
@@ -271,7 +276,7 @@ pub fn activate(
     }
     let expires_at = if master.end_type == TacticsEndType::Duration {
         // Absolute microseconds = supplied now + duration seconds * 1,000,000.
-        now.checked_add(u64::from(master.duration_seconds) * 1_000_000)
+        now.checked_add(u64::from(master.duration_seconds) * MICROSECONDS_PER_SECOND)
             .ok_or(Error::ArithmeticOverflow)?
     } else {
         0

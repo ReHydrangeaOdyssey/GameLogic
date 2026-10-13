@@ -1,3 +1,6 @@
+const ATTACK_QUEUE_CAPACITY: usize = 5;
+const WAIT_DECREMENT_PER_TURN: u32 = 1;
+
 use super::Battle;
 use crate::pseudorandom::shuffle;
 
@@ -8,7 +11,10 @@ impl Battle<'_> {
         (c.character.speed as u32 as f32
             + c.formation.speed
             + self.tactics_correction(i, super::tactical::Stat::Speed))
-        .clamp(0.0, 32.0) as u32
+        .clamp(
+            crate::model::SpeedRank::Ss9 as u32 as f32,
+            crate::model::SpeedRank::FMinus as u32 as f32,
+        ) as u32
     }
 
     pub(super) fn sorted(&mut self, mut indices: Vec<usize>, speed_first: bool) -> Vec<usize> {
@@ -46,7 +52,7 @@ impl Battle<'_> {
             .collect();
         let indices = self.sorted(indices, true);
         for (index, i) in indices.into_iter().enumerate() {
-            if index < 5 {
+            if index < ATTACK_QUEUE_CAPACITY {
                 self.attack_queue.push_back(i);
             } else {
                 self.wait[i] += self.speed(i);
@@ -65,18 +71,18 @@ impl Battle<'_> {
 
     pub(super) fn refill(&mut self) {
         self.filter_queues();
-        if self.attack_queue.len() == 5 {
+        if self.attack_queue.len() == ATTACK_QUEUE_CAPACITY {
             return;
         }
         let had_waiters = !self.wait_queue.is_empty();
-        while self.attack_queue.len() < 5 {
+        while self.attack_queue.len() < ATTACK_QUEUE_CAPACITY {
             if let Some(i) = self.wait_queue.pop_front() {
                 self.attack_queue.push_back(i);
             } else {
                 break;
             }
         }
-        if had_waiters || self.attack_queue.len() == 5 {
+        if had_waiters || self.attack_queue.len() == ATTACK_QUEUE_CAPACITY {
             return;
         }
         let indices = (0..self.combatants.len())
@@ -88,7 +94,7 @@ impl Battle<'_> {
             })
             .collect();
         for i in self.sorted(indices, false) {
-            if self.attack_queue.len() < 5 {
+            if self.attack_queue.len() < ATTACK_QUEUE_CAPACITY {
                 self.attack_queue.push_back(i);
             } else {
                 self.wait_queue.push_back(i);
@@ -105,7 +111,7 @@ impl Battle<'_> {
                 .min()
                 .unwrap_or(0)
         } else {
-            1
+            WAIT_DECREMENT_PER_TURN
         };
         for i in 0..self.wait.len() {
             if self.alive(i) && self.wait[i] > 0 {

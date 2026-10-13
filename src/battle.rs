@@ -1,3 +1,7 @@
+pub const ATTACKING_SIDE: u8 = 0;
+pub const DEFENDING_SIDE: u8 = 1;
+const BATTLE_SIDES: [u8; 2] = [ATTACKING_SIDE, DEFENDING_SIDE];
+
 mod abilities;
 mod actions;
 mod order;
@@ -163,7 +167,7 @@ impl<'a> Battle<'a> {
     }
 
     pub fn step(&mut self) -> Result<Option<Turn>, Error> {
-        if self.annihilated(0) || self.annihilated(1) {
+        if self.annihilated(ATTACKING_SIDE) || self.annihilated(DEFENDING_SIDE) {
             return Ok(None);
         }
         let next_turn = self.turn.checked_add(1).ok_or(Error::ArithmeticOverflow)?;
@@ -266,14 +270,14 @@ impl<'a> Battle<'a> {
 }
 
 fn validate_combatants(master: &MasterData, combatants: &[Combatant]) -> Result<(), Error> {
-    for side in 0..2 {
+    for side in BATTLE_SIDES {
         let count = combatants.iter().filter(|c| c.side == side).count();
-        if !(1..=5).contains(&count) {
+        if !(1..=crate::formation::MAX_PARTY_SIZE).contains(&count) {
             return Err(Error::InvalidFormation);
         }
     }
     for (i, c) in combatants.iter().enumerate() {
-        if c.side > 1
+        if c.side > DEFENDING_SIDE
             || combatants[..i].iter().any(|p| {
                 p.side == c.side && (p.position == c.position || p.character.id == c.character.id)
             })
@@ -282,7 +286,10 @@ fn validate_combatants(master: &MasterData, combatants: &[Combatant]) -> Result<
         }
         let ch = &c.character;
         let base = master.character(ch.id)?;
-        if ch.owner_player_id == u64::MAX || ch.bp > 99 || ch.attribute != base.attribute {
+        if ch.owner_player_id == u64::MAX
+            || ch.bp > crate::master_data::MAX_CHARACTER_BP
+            || ch.attribute != base.attribute
+        {
             return Err(Error::InvalidValue("battle character"));
         }
         crate::nonnegative(ch.hp.max_hp, "max_hp")?;
@@ -322,11 +329,11 @@ fn validate_combatants(master: &MasterData, combatants: &[Combatant]) -> Result<
             crate::nonnegative(value, "buff/debuff")?;
         }
         let mut ids = std::collections::BTreeSet::new();
-        if ch
-            .status_abnormalities
-            .iter()
-            .any(|s| s.elapsed_turns == 0 || s.poison_cycle_turns > 2 || !ids.insert(s.status_id))
-        {
+        if ch.status_abnormalities.iter().any(|s| {
+            s.elapsed_turns < status_abnormality::FIRST_ELAPSED_TURN
+                || s.poison_cycle_turns >= status_abnormality::POISON_INTERVAL_TURNS
+                || !ids.insert(s.status_id)
+        }) {
             return Err(Error::InvalidValue("status state"));
         }
     }
