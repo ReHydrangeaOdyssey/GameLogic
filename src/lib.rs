@@ -3,6 +3,7 @@
 #![forbid(unsafe_code)]
 
 pub mod ability;
+pub mod battle;
 pub mod enums;
 pub mod follower;
 pub mod formation;
