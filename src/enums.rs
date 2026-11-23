@@ -139,6 +139,7 @@ pub enum SkillStatTarget {
     None = 0,
     Attack = 1,
     Defense = 2,
+    AttackDefense = 3,
 }
 impl TryFrom<u32> for SkillStatTarget {
     type Error = Error;
@@ -147,6 +148,7 @@ impl TryFrom<u32> for SkillStatTarget {
             0 => Ok(Self::None),
             1 => Ok(Self::Attack),
             2 => Ok(Self::Defense),
+            3 => Ok(Self::AttackDefense),
             _ => Err(Error::InvalidValue("SkillStatTarget")),
         }
     }

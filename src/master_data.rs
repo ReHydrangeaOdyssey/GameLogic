@@ -6,6 +6,7 @@ use std::collections::BTreeMap;
 
 #[derive(Clone, Debug)]
 pub struct MasterData {
+    composite_skills: BTreeMap<u32, crate::composite_skill::CompositeSkill>,
     characters: BTreeMap<u32, CharacterMasterData>,
     skills: BTreeMap<u32, SkillMasterData>,
     abilities: BTreeMap<u32, AbilityMasterData>,
@@ -31,6 +32,7 @@ fn insert<T>(
 impl MasterData {
     pub fn new(data: ProcessedMasterData) -> Result<Self, Error> {
         let mut result = Self {
+            composite_skills: BTreeMap::new(),
             characters: BTreeMap::new(),
             skills: BTreeMap::new(),
             abilities: BTreeMap::new(),
@@ -80,6 +82,30 @@ impl MasterData {
             kind: "character",
             id,
         })
+    }
+
+    pub fn with_composite_skills(
+        mut self,
+        skills: Vec<crate::composite_skill::CompositeSkill>,
+    ) -> Result<Self, Error> {
+        for skill in skills {
+            skill.validate()?;
+            let id = skill.main_effect.effect.id;
+            if self.skill(id)? != &skill.main_effect.effect {
+                return Err(Error::InvalidValue("composite main skill mismatch"));
+            }
+            if self.composite_skills.insert(id, skill).is_some() {
+                return Err(Error::DuplicateId {
+                    kind: "composite skill",
+                    id,
+                });
+            }
+        }
+        Ok(self)
+    }
+
+    pub fn composite_skill(&self, id: u32) -> Option<&crate::composite_skill::CompositeSkill> {
+        self.composite_skills.get(&id)
     }
     pub fn skill(&self, id: u32) -> Result<&SkillMasterData, Error> {
         self.skills

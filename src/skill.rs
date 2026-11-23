@@ -56,9 +56,7 @@ pub fn validate(skill: &SkillMasterData) -> Result<(), Error> {
     }
     crate::nonnegative(skill.correction_value, "skill correction")?;
     let attack = skill.effect_id == E::Attack;
-    if (attack && skill.target_range == R::Single)
-        || (!attack && !matches!(skill.target_range, R::All | R::Single))
-    {
+    if !attack && !matches!(skill.target_range, R::All | R::Single) {
         return Err(Error::InvalidValue("skill target range"));
     }
     let valid_data = match (&skill.effect_data, skill.effect_id) {
@@ -122,6 +120,10 @@ pub(crate) fn targets(
         return Vec::new();
     }
     if skill.target_range == R::Single {
+        if skill.effect_id == SkillEffectID::Attack {
+            let index = random.next_bounded(ordered.len() as u32) as usize;
+            return vec![ordered[index].0];
+        }
         let preferred: Vec<_> = ordered
             .iter()
             .copied()
