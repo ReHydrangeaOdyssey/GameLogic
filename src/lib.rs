@@ -56,3 +56,4 @@ pub(crate) fn rate(value: f32) -> Result<(), Error> {
         Err(Error::InvalidValue("rate"))
     }
 }
+pub mod composite_skill;

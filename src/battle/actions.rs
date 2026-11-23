@@ -37,6 +37,28 @@ impl Battle<'_> {
     }
 
     fn skill_action(&mut self, actor: usize, skill: &SkillMasterData) {
+        if let Some(composite) = self.master.composite_skill(skill.id).cloned() {
+            for mut component in std::iter::once(composite.main_effect).chain(composite.sub_effects)
+            {
+                if let Some((minimum, maximum)) = component.random_hit_range {
+                    // Uniform inclusive hit count = minimum + random(maximum - minimum + 1).
+                    let count = if minimum == maximum {
+                        minimum
+                    } else {
+                        minimum + self.random.next_bounded(maximum - minimum + 1)
+                    };
+                    component.effect.effect_data = Some(SkillMasterDataEffectData::RandomAttack(
+                        SkillRandomAttackData { hit_count: count },
+                    ));
+                }
+                self.skill_component(actor, &component.effect);
+            }
+        } else {
+            self.skill_component(actor, skill);
+        }
+    }
+
+    fn skill_component(&mut self, actor: usize, skill: &SkillMasterData) {
         let side = self.combatants[actor].side;
         let revival = matches!(&skill.effect_data, Some(SkillMasterDataEffectData::Heal(v)) if v.can_heal_incapacitated);
         let candidates: Vec<_> = self
@@ -113,6 +135,14 @@ impl Battle<'_> {
                     }
                     (SkillEffectID::Debuff, SkillStatTarget::Defense) => {
                         b.defense_debuff += skill.correction_value
+                    }
+                    (SkillEffectID::Buff, SkillStatTarget::AttackDefense) => {
+                        b.attack_buff += skill.correction_value;
+                        b.defense_buff += skill.correction_value;
+                    }
+                    (SkillEffectID::Debuff, SkillStatTarget::AttackDefense) => {
+                        b.attack_debuff += skill.correction_value;
+                        b.defense_debuff += skill.correction_value;
                     }
                     _ => unreachable!("validated skill data"),
                 }
